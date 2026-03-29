@@ -62,10 +62,8 @@ TRONIXIA_WD_04/
 
 ## Live Demo
 
-(Add your GitHub Pages link here)
-
 ```
-https://your-username.github.io/TRONIXIA_WD_04/
+https://bodan-123.github.io/TRONIXIA_WD_04/
 ```
 
 ---
