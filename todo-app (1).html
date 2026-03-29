@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow - To-Do App</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+  /* ── AUTH ── */
+  #auth {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; background: linear-gradient(135deg, #667eea, #764ba2);
+  }
+  .auth-card {
+    background: #fff; border-radius: 12px; padding: 36px;
+    width: 360px; box-shadow: 0 8px 30px rgba(0,0,0,.2);
+  }
+  .auth-card h1 { color: #667eea; font-size: 26px; margin-bottom: 4px; }
+  .auth-card p  { color: #888; font-size: 14px; margin-bottom: 24px; }
+  .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+  .tab {
+    flex: 1; padding: 10px; background: none; border: none;
+    font-size: 15px; cursor: pointer; color: #888; font-weight: 600;
+  }
+  .tab.active { color: #667eea; border-bottom: 2px solid #667eea; margin-bottom: -2px; }
+  label { display: block; font-size: 13px; color: #555; margin-bottom: 5px; font-weight: 600; }
+  input[type=text], input[type=password], input[type=date], textarea, select {
+    width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px;
+    font-size: 14px; outline: none; transition: border .2s; font-family: Arial;
+  }
+  input:focus, textarea:focus, select:focus { border-color: #667eea; }
+  .field { margin-bottom: 14px; }
+  .btn {
+    width: 100%; padding: 12px; background: #667eea; color: #fff;
+    border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: background .2s;
+  }
+  .btn:hover { background: #5a6fd6; }
+  .err { color: #e74c3c; font-size: 13px; margin-top: 8px; text-align: center; display: none; }
+
+  /* ── APP ── */
+  #app { display: none; }
+
+  .topbar {
+    background: #667eea; color: #fff; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .topbar h2 { font-size: 20px; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .topbar-right span { font-size: 14px; }
+  .logout-btn {
+    padding: 7px 16px; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.4);
+    border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;
+  }
+  .logout-btn:hover { background: rgba(255,255,255,.35); }
+
+  .container { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+
+  /* ── STATS ── */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat {
+    background: #fff; border-radius: 10px; padding: 16px;
+    text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  }
+  .stat .num { font-size: 28px; font-weight: 700; }
+  .stat .lbl { font-size: 12px; color: #888; margin-top: 2px; }
+  .c-purple { color: #667eea; } .c-green { color: #27ae60; }
+  .c-orange { color: #f39c12; } .c-red { color: #e74c3c; }
+
+  /* ── ADD TASK ── */
+  .add-box {
+    background: #fff; border-radius: 10px; padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 20px;
+  }
+  .add-box h3 { margin-bottom: 14px; font-size: 16px; color: #444; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .add-btn {
+    padding: 10px 24px; background: #667eea; color: #fff;
+    border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+    cursor: pointer; margin-top: 4px;
+  }
+  .add-btn:hover { background: #5a6fd6; }
+
+  /* ── FILTERS ── */
+  .filter-bar {
+    background: #fff; border-radius: 10px; padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 16px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  }
+  .filter-bar input[type=text] { flex: 1; min-width: 160px; }
+  .filter-btn {
+    padding: 7px 14px; border: 1px solid #ddd; border-radius: 6px;
+    background: #f9f9f9; color: #555; cursor: pointer; font-size: 13px; transition: all .15s;
+  }
+  .filter-btn.on { background: #667eea; color: #fff; border-color: #667eea; }
+  select.sm { width: auto; padding: 7px 10px; font-size: 13px; }
+
+  /* ── TASK CARDS ── */
+  .task-list { display: flex; flex-direction: column; gap: 10px; }
+  .task {
+    background: #fff; border-radius: 10px; padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    display: flex; align-items: flex-start; gap: 12px;
+    border-left: 4px solid #ddd; transition: box-shadow .2s;
+  }
+  .task:hover { box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+  .task.done { opacity: .6; }
+  .task.high   { border-left-color: #e74c3c; }
+  .task.medium { border-left-color: #f39c12; }
+  .task.low    { border-left-color: #27ae60; }
+  .task input[type=checkbox] { margin-top: 3px; width: 17px; height: 17px; cursor: pointer; accent-color: #667eea; }
+  .task-body { flex: 1; }
+  .task-title { font-size: 15px; font-weight: 600; color: #333; }
+  .task.done .task-title { text-decoration: line-through; color: #aaa; }
+  .task-desc { font-size: 13px; color: #777; margin-top: 3px; }
+  .task-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; align-items: center; }
+  .badge {
+    padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+  }
+  .b-high   { background: #fdecea; color: #e74c3c; }
+  .b-medium { background: #fef9e7; color: #f39c12; }
+  .b-low    { background: #eafaf1; color: #27ae60; }
+  .b-tag    { background: #eef0ff; color: #667eea; }
+  .deadline { font-size: 12px; color: #888; }
+  .deadline.overdue { color: #e74c3c; font-weight: 600; }
+  .task-btns { display: flex; gap: 6px; }
+  .icon-btn {
+    width: 30px; height: 30px; border: 1px solid #eee; border-radius: 6px;
+    background: #f9f9f9; cursor: pointer; font-size: 14px; transition: all .15s;
+  }
+  .icon-btn:hover { background: #667eea; border-color: #667eea; color: #fff; }
+  .del-btn:hover  { background: #e74c3c !important; border-color: #e74c3c !important; }
+
+  .empty { text-align: center; padding: 50px; color: #aaa; font-size: 15px; }
+  .empty span { font-size: 40px; display: block; margin-bottom: 10px; }
+
+  /* EDIT MODAL */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    display: none; align-items: center; justify-content: center; z-index: 99;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 12px; padding: 28px;
+    width: 440px; max-width: 95vw; box-shadow: 0 10px 40px rgba(0,0,0,.2);
+  }
+  .modal h3 { margin-bottom: 16px; font-size: 17px; color: #444; }
+  .modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+  .cancel-btn {
+    padding: 9px 18px; background: #eee; border: none; border-radius: 8px;
+    cursor: pointer; font-size: 14px;
+  }
+  .save-btn {
+    padding: 9px 20px; background: #667eea; color: #fff; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .save-btn:hover { background: #5a6fd6; }
+
+  @media(max-width:600px) {
+    .stats { grid-template-columns: repeat(2,1fr); }
+    .row   { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH ══════════════════════════════════════════════════════ -->
+<div id="auth">
+  <div class="auth-card">
+    <h1>✅ TaskFlow</h1>
+    <p>Simple &amp; smart task manager</p>
+    <div class="tabs">
+      <button class="tab active" id="tab-login"    onclick="showTab('login')">Login</button>
+      <button class="tab"        id="tab-register" onclick="showTab('register')">Register</button>
+    </div>
+
+    <!-- Login -->
+    <div id="login-form">
+      <div class="field"><label>Username</label><input type="text"     id="l-user" placeholder="Enter username"></div>
+      <div class="field"><label>Password</label><input type="password" id="l-pass" placeholder="Enter password"></div>
+      <button class="btn" onclick="login()">Login</button>
+      <div class="err" id="l-err"></div>
+    </div>
+
+    <!-- Register -->
+    <div id="reg-form" style="display:none">
+      <div class="field"><label>Username</label><input type="text"     id="r-user" placeholder="Choose username"></div>
+      <div class="field"><label>Password</label><input type="password" id="r-pass" placeholder="Choose password"></div>
+      <button class="btn" onclick="register()">Create Account</button>
+      <div class="err" id="r-err"></div>
+    </div>
+    <p style="font-size:12px;color:#aaa;margin-top:14px;text-align:center">Demo: <b>demo</b> / <b>demo123</b></p>
+  </div>
+</div>
+
+<!-- ══ APP ═══════════════════════════════════════════════════════ -->
+<div id="app">
+  <div class="topbar">
+    <h2>✅ TaskFlow</h2>
+    <div class="topbar-right">
+      <span>👤 <b id="uname"></b></span>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat"><div class="num c-purple" id="s-total">0</div><div class="lbl">Total Tasks</div></div>
+      <div class="stat"><div class="num c-orange"  id="s-active">0</div><div class="lbl">Active</div></div>
+      <div class="stat"><div class="num c-green"   id="s-done">0</div><div class="lbl">Completed</div></div>
+      <div class="stat"><div class="num c-red"     id="s-over">0</div><div class="lbl">Overdue</div></div>
+    </div>
+
+    <!-- Add Task -->
+    <div class="add-box">
+      <h3>➕ Add New Task</h3>
+      <div class="field">
+        <label>Title *</label>
+        <input type="text" id="a-title" placeholder="What needs to be done?">
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea id="a-desc" rows="2" placeholder="Optional details..."></textarea>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Priority</label>
+          <select id="a-priority">
+            <option value="medium">🟡 Medium</option>
+            <option value="high">🔴 High</option>
+            <option value="low">🟢 Low</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Deadline</label>
+          <input type="date" id="a-date">
+        </div>
+      </div>
+      <div class="field">
+        <label>Tags (comma separated)</label>
+        <input type="text" id="a-tags" placeholder="e.g. work, personal">
+      </div>
+      <button class="add-btn" onclick="addTask()">Add Task</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-bar">
+      <input type="text" id="search" placeholder="🔍 Search tasks..." oninput="render()" style="flex:1;min-width:140px;">
+      <button class="filter-btn on" data-f="all"     onclick="setF(this)">All</button>
+      <button class="filter-btn"    data-f="active"  onclick="setF(this)">Active</button>
+      <button class="filter-btn"    data-f="done"    onclick="setF(this)">Done</button>
+      <button class="filter-btn"    data-f="overdue" onclick="setF(this)">Overdue</button>
+      <select class="sm" id="priority-filter" onchange="render()">
+        <option value="">All Priorities</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+      <select class="sm" id="sort-by" onchange="render()">
+        <option value="created">Newest First</option>
+        <option value="deadline">By Deadline</option>
+        <option value="priority">By Priority</option>
+        <option value="title">By Title</option>
+      </select>
+    </div>
+
+    <!-- Tag filter chips -->
+    <div id="tag-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;"></div>
+
+    <!-- Task List -->
+    <div class="task-list" id="task-list"></div>
+  </div>
+</div>
+
+<!-- ══ EDIT MODAL ═════════════════════════════════════════════════ -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>✏️ Edit Task</h3>
+    <div class="field"><label>Title</label><input type="text" id="e-title"></div>
+    <div class="field"><label>Description</label><textarea id="e-desc" rows="2"></textarea></div>
+    <div class="row">
+      <div class="field">
+        <label>Priority</label>
+        <select id="e-priority">
+          <option value="medium">🟡 Medium</option>
+          <option value="high">🔴 High</option>
+          <option value="low">🟢 Low</option>
+        </select>
+      </div>
+      <div class="field"><label>Deadline</label><input type="date" id="e-date"></div>
+    </div>
+    <div class="field"><label>Tags (comma separated)</label><input type="text" id="e-tags"></div>
+    <div class="modal-btns">
+      <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+      <button class="save-btn"   onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────
+var user      = null;
+var filter    = 'all';
+var tagFilter = null;
+var editId    = null;
+
+// ── STORAGE ───────────────────────────────────────────
+function getUsers() { return JSON.parse(localStorage.getItem('tf_users') || '{}'); }
+function saveUsers(u) { localStorage.setItem('tf_users', JSON.stringify(u)); }
+function getTasks() {
+  var all = JSON.parse(localStorage.getItem('tf_tasks') || '{}');
+  return all[user] || [];
+}
+function saveTasks(tasks) {
+  var all = JSON.parse(localStorage.getItem('tf_tasks') || '{}');
+  all[user] = tasks;
+  localStorage.setItem('tf_tasks', JSON.stringify(all));
+}
+
+// ── AUTH ──────────────────────────────────────────────
+function showTab(t) {
+  document.getElementById('tab-login').classList.toggle('active', t === 'login');
+  document.getElementById('tab-register').classList.toggle('active', t === 'register');
+  document.getElementById('login-form').style.display = t === 'login' ? '' : 'none';
+  document.getElementById('reg-form').style.display   = t === 'register' ? '' : 'none';
+}
+function showErr(id, msg) {
+  var el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+function register() {
+  var u = document.getElementById('r-user').value.trim();
+  var p = document.getElementById('r-pass').value;
+  if (!u || !p) return showErr('r-err', 'Please fill all fields.');
+  var users = getUsers();
+  if (users[u]) return showErr('r-err', 'Username already taken.');
+  users[u] = p;
+  saveUsers(users);
+  showErr('r-err', '');
+  showTab('login');
+  document.getElementById('l-user').value = u;
+  alert('Account created! Please login.');
+}
+function login() {
+  var u = document.getElementById('l-user').value.trim();
+  var p = document.getElementById('l-pass').value;
+  if (!u || !p) return showErr('l-err', 'Please fill all fields.');
+  var users = getUsers();
+  if (!users[u] || users[u] !== p) return showErr('l-err', 'Invalid username or password.');
+  user = u;
+  document.getElementById('auth').style.display = 'none';
+  document.getElementById('app').style.display  = 'block';
+  document.getElementById('uname').textContent  = u;
+  renderAll();
+}
+function logout() {
+  user = null; filter = 'all'; tagFilter = null;
+  document.getElementById('auth').style.display = 'flex';
+  document.getElementById('app').style.display  = 'none';
+}
+
+// ── ADD TASK ──────────────────────────────────────────
+function addTask() {
+  var title = document.getElementById('a-title').value.trim();
+  if (!title) return alert('Title is required!');
+  var tasks = getTasks();
+  tasks.unshift({
+    id:       Date.now().toString(),
+    title:    title,
+    desc:     document.getElementById('a-desc').value.trim(),
+    priority: document.getElementById('a-priority').value,
+    deadline: document.getElementById('a-date').value,
+    tags:     document.getElementById('a-tags').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean),
+    done:     false,
+    created:  Date.now()
+  });
+  saveTasks(tasks);
+  document.getElementById('a-title').value    = '';
+  document.getElementById('a-desc').value     = '';
+  document.getElementById('a-tags').value     = '';
+  document.getElementById('a-date').value     = '';
+  document.getElementById('a-priority').value = 'medium';
+  renderAll();
+}
+
+// ── DONE / DELETE ─────────────────────────────────────
+function toggleDone(id) {
+  var tasks = getTasks();
+  for (var i = 0; i < tasks.length; i++) {
+    if (tasks[i].id === id) { tasks[i].done = !tasks[i].done; break; }
+  }
+  saveTasks(tasks); renderAll();
+}
+function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  saveTasks(getTasks().filter(function(t){ return t.id !== id; }));
+  renderAll();
+}
+
+// ── EDIT ──────────────────────────────────────────────
+function openEdit(id) {
+  var tasks = getTasks();
+  var t = null;
+  for (var i = 0; i < tasks.length; i++) { if (tasks[i].id === id) { t = tasks[i]; break; } }
+  if (!t) return;
+  editId = id;
+  document.getElementById('e-title').value    = t.title;
+  document.getElementById('e-desc').value     = t.desc || '';
+  document.getElementById('e-priority').value = t.priority;
+  document.getElementById('e-date').value     = t.deadline || '';
+  document.getElementById('e-tags').value     = (t.tags || []).join(', ');
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('overlay').classList.remove('open'); }
+function saveEdit() {
+  var tasks = getTasks();
+  var idx = -1;
+  for (var i = 0; i < tasks.length; i++) { if (tasks[i].id === editId) { idx = i; break; } }
+  if (idx < 0) return;
+  var t = tasks[idx];
+  t.title    = document.getElementById('e-title').value.trim() || t.title;
+  t.desc     = document.getElementById('e-desc').value.trim();
+  t.priority = document.getElementById('e-priority').value;
+  t.deadline = document.getElementById('e-date').value;
+  t.tags     = document.getElementById('e-tags').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+  saveTasks(tasks); closeModal(); renderAll();
+}
+
+// ── FILTERS ───────────────────────────────────────────
+function setF(btn) {
+  filter = btn.dataset.f;
+  document.querySelectorAll('.filter-btn').forEach(function(b){ b.classList.toggle('on', b === btn); });
+  render();
+}
+function setTag(tag) {
+  tagFilter = (tagFilter === tag) ? null : tag;
+  renderTags(); render();
+}
+function isOverdue(t) {
+  return t.deadline && !t.done && new Date(t.deadline) < new Date(new Date().toDateString());
+}
+
+// ── RENDER ────────────────────────────────────────────
+function renderAll() { renderStats(); renderTags(); render(); }
+
+function renderStats() {
+  var tasks = getTasks();
+  var done  = 0, over = 0;
+  for (var i = 0; i < tasks.length; i++) {
+    if (tasks[i].done) done++;
+    if (isOverdue(tasks[i])) over++;
+  }
+  document.getElementById('s-total').textContent  = tasks.length;
+  document.getElementById('s-active').textContent = tasks.length - done;
+  document.getElementById('s-done').textContent   = done;
+  document.getElementById('s-over').textContent   = over;
+}
+
+function renderTags() {
+  var tasks = getTasks();
+  var seen = {}, tags = [];
+  for (var i = 0; i < tasks.length; i++) {
+    var t = tasks[i].tags || [];
+    for (var j = 0; j < t.length; j++) {
+      if (!seen[t[j]]) { seen[t[j]] = true; tags.push(t[j]); }
+    }
+  }
+  var box = document.getElementById('tag-chips');
+  if (!tags.length) { box.innerHTML = ''; return; }
+  var html = '<span style="font-size:13px;color:#888;align-self:center">Tags:</span>';
+  for (var k = 0; k < tags.length; k++) {
+    var tag = tags[k];
+    var active = tagFilter === tag;
+    html += '<button onclick="setTag(\'' + tag + '\')" style="padding:4px 12px;border-radius:20px;border:1px solid #667eea;background:' + (active?'#667eea':'#eef0ff') + ';color:' + (active?'#fff':'#667eea') + ';cursor:pointer;font-size:12px">' + tag + '</button>';
+  }
+  box.innerHTML = html;
+}
+
+function render() {
+  var tasks = getTasks();
+  var q  = document.getElementById('search').value.toLowerCase();
+  var pf = document.getElementById('priority-filter').value;
+  var sf = document.getElementById('sort-by').value;
+
+  // search
+  if (q) tasks = tasks.filter(function(t){
+    return t.title.toLowerCase().indexOf(q) >= 0 ||
+           (t.desc||'').toLowerCase().indexOf(q) >= 0 ||
+           (t.tags||[]).some(function(tag){ return tag.toLowerCase().indexOf(q) >= 0; });
+  });
+  // status filter
+  if (filter === 'done')    tasks = tasks.filter(function(t){ return  t.done; });
+  if (filter === 'active')  tasks = tasks.filter(function(t){ return !t.done; });
+  if (filter === 'overdue') tasks = tasks.filter(function(t){ return isOverdue(t); });
+  // priority filter
+  if (pf) tasks = tasks.filter(function(t){ return t.priority === pf; });
+  // tag filter
+  if (tagFilter) tasks = tasks.filter(function(t){ return (t.tags||[]).indexOf(tagFilter) >= 0; });
+  // sort
+  if (sf === 'deadline') {
+    tasks.sort(function(a,b){ return (a.deadline||'9999') > (b.deadline||'9999') ? 1 : -1; });
+  } else if (sf === 'priority') {
+    var o = {high:0, medium:1, low:2};
+    tasks.sort(function(a,b){ return o[a.priority] - o[b.priority]; });
+  } else if (sf === 'title') {
+    tasks.sort(function(a,b){ return a.title.localeCompare(b.title); });
+  } else {
+    tasks.sort(function(a,b){ return b.created - a.created; });
+  }
+
+  var list = document.getElementById('task-list');
+  if (!tasks.length) {
+    list.innerHTML = '<div class="empty"><span>📭</span>No tasks found</div>';
+    return;
+  }
+
+  var html = '';
+  for (var i = 0; i < tasks.length; i++) {
+    var t = tasks[i];
+    var over   = isOverdue(t);
+    var pClass = t.priority === 'high' ? 'b-high' : t.priority === 'low' ? 'b-low' : 'b-medium';
+    var pEmoji = t.priority === 'high' ? '🔴' : t.priority === 'low' ? '🟢' : '🟡';
+    var dl = t.deadline
+      ? '<span class="deadline' + (over?' overdue':'') + '">📅 ' + (over?'Overdue: ':'') + t.deadline + '</span>'
+      : '';
+    var tagHtml = '';
+    for (var j = 0; j < (t.tags||[]).length; j++) {
+      tagHtml += '<span class="badge b-tag">' + t.tags[j] + '</span>';
+    }
+    html += '<div class="task ' + t.priority + (t.done?' done':'') + '">' +
+      '<input type="checkbox" ' + (t.done?'checked':'') + ' onchange="toggleDone(\'' + t.id + '\')">' +
+      '<div class="task-body">' +
+        '<div class="task-title">' + t.title + '</div>' +
+        (t.desc ? '<div class="task-desc">' + t.desc + '</div>' : '') +
+        '<div class="task-meta">' +
+          '<span class="badge ' + pClass + '">' + pEmoji + ' ' + t.priority + '</span>' +
+          dl + tagHtml +
+        '</div>' +
+      '</div>' +
+      '<div class="task-btns">' +
+        '<button class="icon-btn" onclick="openEdit(\'' + t.id + '\')" title="Edit">✏️</button>' +
+        '<button class="icon-btn del-btn" onclick="deleteTask(\'' + t.id + '\')" title="Delete">🗑️</button>' +
+      '</div>' +
+    '</div>';
+  }
+  list.innerHTML = html;
+}
+
+// close modal on outside click
+document.getElementById('overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── DEMO DATA ─────────────────────────────────────────
+(function init() {
+  var users = getUsers();
+  if (!users['demo']) { users['demo'] = 'demo123'; saveUsers(users); }
+  var all = JSON.parse(localStorage.getItem('tf_tasks') || '{}');
+  if (!all['demo'] || !all['demo'].length) {
+    var d = new Date();
+    function addDays(n) {
+      var x = new Date(d); x.setDate(x.getDate()+n);
+      return x.toISOString().slice(0,10);
+    }
+    all['demo'] = [
+      { id:'1', title:'Complete Internship Task-04', desc:'Build a To-Do app with auth and filters', priority:'high',   deadline: addDays(2),  tags:['internship','work'],    done:false, created:Date.now()-1000 },
+      { id:'2', title:'Review project documentation', desc:'',                                        priority:'medium', deadline: addDays(5),  tags:['work'],                 done:false, created:Date.now()-2000 },
+      { id:'3', title:'Buy groceries',                desc:'',                                        priority:'low',    deadline: addDays(-1), tags:['personal'],             done:false, created:Date.now()-3000 },
+      { id:'4', title:'Morning workout',              desc:'30 min run',                              priority:'medium', deadline:'',           tags:['health'],               done:true,  created:Date.now()-4000 }
+    ];
+    localStorage.setItem('tf_tasks', JSON.stringify(all));
+  }
+})();
+</script>
+</body>
+</html>
